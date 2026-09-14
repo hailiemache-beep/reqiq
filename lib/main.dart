@@ -4,7 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    print('ፋየርቤዝ መጀመር ላይ ስህተት ተፈጥሯል: $e');
+  }
   runApp(const RaqiqChatApp());
 }
 
@@ -22,7 +26,6 @@ class RaqiqChatApp extends StatelessWidget {
   }
 }
 
-// 1. የክፍል/ግንኙነት ኮድ (Room Code) ማስገቢያ ገጽ
 class RoomJoinScreen extends StatefulWidget {
   const RoomJoinScreen({super.key});
 
@@ -47,16 +50,15 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
 
   @override
   Widget build(BuildContext context) {
-    String myId = DateTime.now().millisecondsSinceEpoch.toString();
     return Scaffold(
-      appBar: AppBar(title: const Text('ከሌላ ሰው ጋር መገናኛ')),
+      appBar: AppBar(title: const Text('የውይይት ክፍል መቀላቀያ')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              'ከተወሰነ ሰው ጋር ለመገናኘት የሚፈልጉትን ቁጥር (ለምሳሌ 12 ወይም 13) እዚህ ያስገቡ:',
+              'ከሌላው ሰው ጋር ለመገናኘት የሚፈልጉትን ቁጥር (Room Code) እዚህ ያስገቡ:',
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 16),
             ),
@@ -64,7 +66,7 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
             TextField(
               controller: _roomController,
               decoration: const InputDecoration(
-                labelText: 'የግንኙነት ቁጥር (Room Code)',
+                labelText: 'የክፍል ቁጥር (Room Code)',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -80,7 +82,6 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
   }
 }
 
-// 2. መልእክት የሚላክበት እና የሚቀበልበት የውስጥ ሎጂክ ያለው የቻት ስክሪን
 class ChatScreen extends StatefulWidget {
   final String roomCode;
   const ChatScreen({super.key, required this.roomCode});
@@ -91,12 +92,8 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  // ለእያንዳንዱ ተጠቃሚ የተለየ መለያ (ID) እንፈጥራለን (ማን የላከው መሆኑን ለመለየት)
   final String _userId = DateTime.now().millisecondsSinceEpoch.toString();
 
-  // ----------------------------------------------------
-  // [1] መልእክት ወደ ሰርቨር (Cloud Firestore) የመላክ ኮድ (እኛ ስንጽፍ)
-  // ----------------------------------------------------
   void _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
 
@@ -104,18 +101,17 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageController.clear();
 
     try {
-      // በሰርቨር ላይ ባለው የተለየ ሩም (Room Code) ውስጥ መልእክቱን እንመዘግባለን
       await FirebaseFirestore.instance
           .collection('rooms')
           .doc(widget.roomCode)
           .collection('messages')
           .add({
         'message': textToSend,
-        'senderId': _userId, // መልእክቱን የላከው ሰው መለያ
-        'timestamp': FieldValue.serverTimestamp(), // የሰዓት ማህተም
+        'senderId': _userId,
+        'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('መልእክት በመላክ ላይ ስህተት ተፈጥሯል: $e');
+      print('መልእክት በመላክ ላይ ስህተት: $e');
     }
   }
 
@@ -123,13 +119,10 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('የውይይት ክፍል: ${widget.roomCode}'),
+        title: Text('ክፍል: ${widget.roomCode}'),
       ),
       body: Column(
         children: [
-          // ----------------------------------------------------
-          // [2] ከሰርቨር የሚመጡ መልእክቶችን በቅጽበት ተቀብሎ የማሳየት ኮድ (ሰው ሲጽፍልን)
-          // ----------------------------------------------------
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -144,21 +137,20 @@ class _ChatScreenState extends State<ChatScreen> {
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(
-                    child: Text('ምንም መልእክቶች የሉም። የመጀመሪያውን መልእክት ይጻፉ!'),
+                    child: Text('ምንም መልእክቶች የሉም። የመጀመሪያውን ይጻፉ!'),
                   );
                 }
 
                 final docs = snapshot.data!.docs;
 
                 return ListView.builder(
-                  reverse: true, // አዳዲስ መልእክቶች ከታች እንዲመጡ ከታች ወደ ላይ ያሳያል
+                  reverse: true,
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
                     String messageText = data['message'] ?? '';
                     String senderId = data['senderId'] ?? '';
 
-                    // እኛ የላካቸው መልእክቶች በቀኝ በኩል፣ ከሌላው ሰው የመጡት በግራ በኩል እንዲታዩ ይደረጋል
                     bool isMe = (senderId == _userId);
 
                     return Align(
@@ -181,10 +173,6 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-
-          // ----------------------------------------------------
-          // [3] የጽሁፍ ማስገቢያ ሳጥን እና የመላኪያ ቁልፍ
-          // ----------------------------------------------------
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Row(
@@ -193,15 +181,15 @@ class _ChatScreenState extends State<ChatScreen> {
                   child: TextField(
                     controller: _messageController,
                     decoration: const InputDecoration(
-                      hintText: 'መልእክት እዚህ ይጻፉ...',
+                      hintText: 'መልእክት ጻፍ...',
                       border: OutlineInputBorder(),
                     ),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue, size: 30),
-                  onPressed: _sendMessage, // እዚህ ላይ ጫን ሲደረግ መልእክቱ ወደ ሰርቨር ይሄዳል
+                  icon: const Icon(Icons.send, color: Colors.blue),
+                  onPressed: _sendMessage,
                 ),
               ],
             ),
