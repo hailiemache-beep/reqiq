@@ -5,28 +5,26 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
-  runApp(const RaqiqApp());
+  runApp(const RaqiqChatApp());
 }
 
-class RaqiqApp extends StatelessWidget {
-  const RaqiqApp({Key? key}) : super(key: key);
+class RaqiqChatApp extends StatelessWidget {
+  const RaqiqChatApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ረቂቅ ቻት አፕሊኬሽን',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      title: 'ራቂቅ ቻት',
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: const RoomJoinScreen(),
     );
   }
 }
 
-// 1. የረቂቅ መግቢያ ገጽ (Room Join)
+// 1. የክፍል/ቁጥር (Room Code) ማስገቢያ ገጽ
 class RoomJoinScreen extends StatefulWidget {
-  const RoomJoinScreen({Key? key}) : super(key: key);
+  const RoomJoinScreen({super.key});
 
   @override
   State<RoomJoinScreen> createState() => _RoomJoinScreenState();
@@ -36,8 +34,8 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
   final TextEditingController _roomController = TextEditingController();
 
   void _joinRoom() {
+    if (_roomController.text.trim().isEmpty) return;
     String roomCode = _roomController.text.trim();
-    if (roomCode.isEmpty) return;
 
     Navigator.push(
       context,
@@ -50,32 +48,30 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ረቂቅ - የቻት ክፍል መግቢያ'),
-        backgroundColor: Colors.blue,
-      ),
+      appBar: AppBar(title: const Text('የግንኙነት ቁጥር ያስገቡ')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              'ከሌላው ሰው ጋር ለመገናኘት የረቂቅ መለያ ቁጥር ወይም ፊደል (ለምሳሌ 12 ወይም room1) ያስገቡ',
-              style: TextStyle(fontSize: 16),
+              'ከሌላ ሰው ጋር ለመገናኘት የሚፈልጉትን ቁጥር (ለምሳሌ 12 ወይም 13) እዚህ ያስገቡ:',
               textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 16),
             ),
             const SizedBox(height: 20),
             TextField(
               controller: _roomController,
+              keyboardType: TextInputType.text,
               decoration: const InputDecoration(
+                labelText: 'የቁጥር/የክፍል ኮድ (Room Code)',
                 border: OutlineInputBorder(),
-                labelText: 'የክፍል ኮድ (Room Code)',
               ),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _joinRoom,
-              child: const Text('ወደ ረቂቅ ቻት ግባ'),
+              child: const Text('ግባ (Join)'),
             ),
           ],
         ),
@@ -84,10 +80,10 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
   }
 }
 
-// 2. የረቂቅ እውነተኛ ሰዓት (Real-time) ቻት ገጽ
+// 2. የመልእክት ልውውጥ እና ኦንላይን ሁኔታ ማሳያ ገጽ
 class ChatScreen extends StatefulWidget {
   final String roomCode;
-  const ChatScreen({Key? key, required this.roomCode}) : super(key: key);
+  const ChatScreen({super.key, required this.roomCode});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -95,53 +91,82 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   void _sendMessage() async {
     if (_messageController.text.trim().isEmpty) return;
 
-    String textToSend = _messageController.text;
+    String text = _messageController.text;
     _messageController.clear();
 
-    try {
-      await _firestore
-          .collection('raqiq_rooms')
-          .doc(widget.roomCode)
-          .collection('chats')
-          .add({
-        'message': textToSend,
-        'timestamp': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      debugPrint("ስህተት ተፈጥሯል: $e");
-    }
+    await FirebaseFirestore.instance
+        .collection('rooms')
+        .doc(widget.roomCode)
+        .collection('messages')
+        .add({
+      'message': text,
+      'sender': 'ተጠቃሚ',
+      'timestamp': Timestamp.now(),
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ረቂቅ ክፍል: ${widget.roomCode}'),
-        backgroundColor: Colors.blue,
+        title: Row(
+          children: [
+            Text('ኮድ: ${widget.roomCode}'),
+            const SizedBox(width: 15),
+            // የሁለተኛው ሰው ኦንላይን መሆን የሚያሳይ (በቀጥታ ከሰርቨር የሚመጣ)
+            StreamBuilder<DocumentSnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('rooms')
+                  .doc(widget.roomCode)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                bool isOnline = false;
+                if (snapshot.hasData && snapshot.data!.exists) {
+                  var data = snapshot.data!.data() as Map<String, dynamic>?;
+                  isOnline = data?['isOnline'] ?? false;
+                }
+                return Row(
+                  children: [
+                    Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isOnline ? Colors.green : Colors.grey,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      isOnline ? 'ኦንላይን' : 'ኦፍላይን',
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: _firestore
-                  .collection('raqiq_rooms')
+              stream: FirebaseFirestore.instance
+                  .collection('rooms')
                   .doc(widget.roomCode)
-                  .collection('chats')
+                  .collection('messages')
                   .orderBy('timestamp', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                      child: Text('ምንም መልእክት የለም። ማውራት ይጀምሩ!'));
+                  return const Center(child: Text('ምንም መልእክቶች የሉም።'));
                 }
 
                 final docs = snapshot.data!.docs;
@@ -151,20 +176,21 @@ class _ChatScreenState extends State<ChatScreen> {
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     final data = docs[index].data() as Map<String, dynamic>;
-                    return Container(
-                      margin: const EdgeInsets.symmetric(
-                          vertical: 6.0, horizontal: 12.0),
-                      alignment: Alignment.centerLeft,
-                      child: Container(
-                        padding: const EdgeInsets.all(12.0),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade50,
-                          borderRadius: BorderRadius.circular(10.0),
-                          border: Border.all(color: Colors.blue.shade200),
-                        ),
-                        child: Text(
-                          data['message'] ?? '',
-                          style: const TextStyle(fontSize: 16.0),
+                    return ListTile(
+                      title: Align(
+                        alignment: Alignment.centerRight,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 4, horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[100],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            data['message'] ?? '',
+                            style: const TextStyle(fontSize: 16),
+                          ),
                         ),
                       ),
                     );
@@ -173,10 +199,8 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          const Divider(height: 1.0),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 8.0),
-            color: Colors.white,
+          Padding(
+            padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
                 Expanded(
@@ -184,12 +208,13 @@ class _ChatScreenState extends State<ChatScreen> {
                     controller: _messageController,
                     decoration: const InputDecoration(
                       hintText: 'መልእክት ይጻፉ...',
-                      border: InputBorder.none,
+                      border: OutlineInputBorder(),
                     ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
+                  icon: const Icon(Icons.send, color: Colors.blue, size: 30),
                   onPressed: _sendMessage,
                 ),
               ],
