@@ -16,13 +16,13 @@ class RaqiqChatApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'ራቂቅ - ቻት አፕሊኬሽን',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(primarySwatch: Colors.purple),
       home: const RoomJoinScreen(),
     );
   }
 }
 
-// 1. የክፍል ኮድ (Room Code) መቀላቀያ ስክሪን
+// 1. የክፍል ኮድ መቀላቀያ ስክሪን
 class RoomJoinScreen extends StatefulWidget {
   const RoomJoinScreen({super.key});
 
@@ -48,25 +48,34 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('ራቂቅ - የውይይት ክፍል መቀላቀያ')),
+      appBar: AppBar(title: const Text('የውይይት ክፍል መቀላቀያ')),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const SizedBox(height: 20),
+            const Text(
+              'ከሌላው ሰው ጋር ለመነጋገር የሚፈልጉትን ቁጥር (Room Code) እዚህ ያስገቡ:',
+              style: TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 20),
             TextField(
               controller: _roomController,
               enabled: true,
               readOnly: false,
+              keyboardType: TextInputType.number,
               decoration: const InputDecoration(
-                hintText: 'የክፍል ኮድ ያስገቡ...',
+                labelText: 'የክፍል ቁጥር (Room Code)',
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _joinRoom,
-              child: const Text('ወደ ውይይት ግባ'),
+            const SizedBox(height: 24),
+            Center(
+              child: ElevatedButton(
+                onPressed: _joinRoom,
+                child: const Text('ወደ ውይይት ግባ'),
+              ),
             ),
           ],
         ),
@@ -75,7 +84,7 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
   }
 }
 
-// 2. የውይይት (Chat) እና የመልዕክት መላላኪያ ስክሪን
+// 2. የውይይት (Chat) ስክሪን
 class ChatScreen extends StatefulWidget {
   final String roomCode;
   const ChatScreen({super.key, required this.roomCode});
@@ -106,7 +115,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true, // ኪቦርዱ ሲመጣ ስክሪኑ ተስተካክሎ ቦታ እንዲሰጥ
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         title: Text('የውይይት ክፍል: ${widget.roomCode}'),
       ),
@@ -147,7 +156,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             horizontal: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
+                            color: Colors.purple.shade50,
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(data['text'] ?? ''),
@@ -171,7 +180,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    enabled: true, // ኪቦርዱ እንድመጣ እና ግራጫ ሆኖ እንዳይቀር
+                    enabled: true,
                     readOnly: false,
                     keyboardType: TextInputType.text,
                     decoration: const InputDecoration(
@@ -182,7 +191,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
+                  icon: const Icon(Icons.send, color: Colors.purple),
                   onPressed: _sendMessage,
                 ),
               ],
