@@ -24,7 +24,7 @@ class RaqiqApp extends StatelessWidget {
   }
 }
 
-// 1. መጀመሪያ ሁለቱ ሰዎች የሚገናኙበትን ቁጥር (Room ID) የሚገቡበት ገጽ
+// 1. የረቂቅ መግቢያ ገጽ (Room Join)
 class RoomJoinScreen extends StatefulWidget {
   const RoomJoinScreen({Key? key}) : super(key: key);
 
@@ -60,23 +60,22 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Text(
-              'ከሌላው ሰው ጋር ለመገናኘት የሚመሳሰለውን ቁጥር (ለምሳሌ 12) ያስገቡ',
+              'ከሌላው ሰው ጋር ለመገናኘት የረቂቅ መለያ ቁጥር ወይም ፊደል (ለምሳሌ 12 ወይም room1) ያስገቡ',
               style: TextStyle(fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),
             TextField(
               controller: _roomController,
-              keyboardType: TextInputType.text,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
-                labelText: 'የክፍል ቁጥር (Room Code, e.g. 12)',
+                labelText: 'የክፍል ኮድ (Room Code)',
               ),
             ),
             const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _joinRoom,
-              child: const Text('ወደ ቻት ግባ'),
+              child: const Text('ወደ ረቂቅ ቻት ግባ'),
             ),
           ],
         ),
@@ -85,7 +84,7 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
   }
 }
 
-// 2. እርስ በእርስ መልእክት የሚጻጻፉበት ትክክለኛ የቻት ገጽ
+// 2. የረቂቅ እውነተኛ ሰዓት (Real-time) ቻት ገጽ
 class ChatScreen extends StatefulWidget {
   final String roomCode;
   const ChatScreen({Key? key, required this.roomCode}) : super(key: key);
@@ -106,7 +105,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
     try {
       await _firestore
-          .collection('rooms')
+          .collection('raqiq_rooms')
           .doc(widget.roomCode)
           .collection('chats')
           .add({
@@ -122,7 +121,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ክፍል: ${widget.roomCode}'),
+        title: Text('ረቂቅ ክፍል: ${widget.roomCode}'),
         backgroundColor: Colors.blue,
       ),
       body: Column(
@@ -130,7 +129,7 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _firestore
-                  .collection('rooms')
+                  .collection('raqiq_rooms')
                   .doc(widget.roomCode)
                   .collection('chats')
                   .orderBy('timestamp', descending: true)
