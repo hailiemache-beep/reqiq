@@ -7,7 +7,7 @@ void main() async {
   try {
     await Firebase.initializeApp();
   } catch (e) {
-    print('ፋየርቤዝ መጀመር ላይ ስህተት ተፈጥሯል: $e');
+    print('ፋየርቤዝ መጀመር ላይ ስህተት: $e');
   }
   runApp(const RaqiqChatApp());
 }
@@ -98,7 +98,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if (_messageController.text.trim().isEmpty) return;
 
     String textToSend = _messageController.text.trim();
-    _messageController.clear();
+    _messageController.clear(); // ጽሁፉ ሲላክ ሳጥኑ በራሱ ባዶ እንዲሆን
 
     try {
       await FirebaseFirestore.instance
@@ -132,12 +132,23 @@ class _ChatScreenState extends State<ChatScreen> {
                   .orderBy('timestamp', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('ስህተት ተፈጥሯል: ${snapshot.error}'),
+                  );
+                }
+
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
+
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(
-                    child: Text('ምንም መልእክቶች የሉም። የመጀመሪያውን ይጻፉ!'),
+                    child: Text(
+                      'እስካሁን ምንም መልእክት የለም።\nመጀመሪያውን መልእክት እዚህ ይጻፉ!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontSize: 16, color: Colors.grey),
+                    ),
                   );
                 }
 
@@ -173,25 +184,27 @@ class _ChatScreenState extends State<ChatScreen> {
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: const InputDecoration(
-                      hintText: 'መልእክት ጻፍ...',
-                      border: OutlineInputBorder(),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: const InputDecoration(
+                        hintText: 'መልእክት ጻፍ...',
+                        border: OutlineInputBorder(),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.send, color: Colors.blue),
-                  onPressed: _sendMessage,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.send, color: Colors.blue, size: 30),
+                    onPressed: _sendMessage,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
