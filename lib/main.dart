@@ -1,80 +1,73 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(const RaqiqChatApp());
+void main() {
+  runApp(RaqiqApp());
 }
 
-class RaqiqChatApp extends StatelessWidget {
-  const RaqiqChatApp({super.key});
-
+class RaqiqApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ራቂቅ - ቻት አፕሊኬሽን',
-      theme: ThemeData(primarySwatch: Colors.purple),
-      home: const RoomJoinScreen(),
+      title: 'ራቂቅ (Raqiq)',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: RaqiqLoginScreen(),
     );
   }
 }
 
-// 1. የክፍል ኮድ መቀላቀያ ስክሪን
-class RoomJoinScreen extends StatefulWidget {
-  const RoomJoinScreen({super.key});
-
-  @override
-  State<RoomJoinScreen> createState() => _RoomJoinScreenState();
-}
-
-class _RoomJoinScreenState extends State<RoomJoinScreen> {
-  final TextEditingController _roomController = TextEditingController();
-
-  void _joinRoom() {
-    String roomCode = _roomController.text.trim();
-    if (roomCode.isNotEmpty) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => ChatScreen(roomCode: roomCode),
-        ),
-      );
-    }
-  }
-
+// 1. የመጀመሪያው የስልክ ቁጥር እና ኮድ ማስገቢያ ገጽ
+class RaqiqLoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('የውይይት ክፍል መቀላቀያ')),
+      appBar: AppBar(
+        title: Text('ራቂቅ - ግባ (Login)'),
+        backgroundColor: Colors.blueAccent,
+      ),
       body: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(20.0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const SizedBox(height: 20),
-            const Text(
-              'ከሌላው ሰው ጋር ለመነጋገር የሚፈልጉትን ቁጥር (Room Code) እዚህ ያስገቡ:',
-              style: TextStyle(fontSize: 16),
+            Text(
+              'እንኳን ወደ ራቂቅ መጡ',
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blueAccent),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 30),
             TextField(
-              controller: _roomController,
-              enabled: true,
-              readOnly: false,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'የክፍል ቁጥር (Room Code)',
+              decoration: InputDecoration(
+                labelText: 'ስልክ ቁጥር ያስገቡ',
+                prefixIcon: Icon(Icons.phone),
                 border: OutlineInputBorder(),
               ),
+              keyboardType: TextInputType.phone,
             ),
-            const SizedBox(height: 24),
-            Center(
+            SizedBox(height: 20),
+            TextField(
+              decoration: InputDecoration(
+                labelText: 'የማረጋገጫ ኮድ (Code)',
+                prefixIcon: Icon(Icons.lock),
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+            ),
+            SizedBox(height: 30),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
               child: ElevatedButton(
-                onPressed: _joinRoom,
-                child: const Text('ወደ ውይይት ግባ'),
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                onPressed: () {
+                  // ቁልፉ ሲጫን ወደ ቻት ገጽ (Chat Screen) እንዲሄድ ይደረጋል
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => RaqiqChatScreen()),
+                  );
+                },
+                child: Text('ግባ (Login)', style: TextStyle(fontSize: 18, color: Colors.white)),
               ),
             ),
           ],
@@ -84,115 +77,83 @@ class _RoomJoinScreenState extends State<RoomJoinScreen> {
   }
 }
 
-// 2. የውይይት (Chat) ስክሪን
-class ChatScreen extends StatefulWidget {
-  final String roomCode;
-  const ChatScreen({super.key, required this.roomCode});
-
+// 2. የመልእክት ልውውጥ (Chat) ገጽ
+class RaqiqChatScreen extends StatefulWidget {
   @override
-  State<ChatScreen> createState() => _ChatScreenState();
+  _RaqiqChatScreenState createState() => _RaqiqChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
   final TextEditingController _messageController = TextEditingController();
+  final List<String> _messages = []; // መልእክቶች የሚቀመጡበት ዝርዝር
 
-  void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) return;
-
-    String messageText = _messageController.text;
-    _messageController.clear();
-
-    await FirebaseFirestore.instance
-        .collection('rooms')
-        .doc(widget.roomCode)
-        .collection('messages')
-        .add({
-      'text': messageText,
-      'createdAt': Timestamp.now(),
-    });
+  void _sendMessage() {
+    if (_messageController.text.isNotEmpty) {
+      setState(() {
+        _messages.add(_messageController.text);
+        _messageController.clear(); // ጽሁፉን ከጻፈ በኋላ ሳጥኑን ባዶ ማድረግ
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: true,
       appBar: AppBar(
-        title: Text('የውይይት ክፍል: ${widget.roomCode}'),
+        title: Row(
+          children: [
+            Text('ራቂቅ ቻት'),
+            SizedBox(width: 10),
+            // ተጠቃሚው ኦንላይን መሆኑን የሚያሳይ አረንጓዴ ነጥብ (Online Status)
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.blueAccent,
       ),
       body: Column(
         children: [
+          // የተላኩ እና የተጻፉ መልእክቶች የሚነበቡበት ክፍት ቦታ
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('rooms')
-                  .doc(widget.roomCode)
-                  .collection('messages')
-                  .orderBy('createdAt', descending: true)
-                  .snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Text('እስካሁን ምንም መልዕክት የለም። መልዕክት ጽፈው ይቀበሉ!'),
-                  );
-                }
-
-                final docs = snapshot.data!.docs;
-
-                return ListView.builder(
-                  reverse: true,
-                  itemCount: docs.length,
-                  itemBuilder: (context, index) {
-                    final data = docs[index].data() as Map<String, dynamic>;
-                    return ListTile(
-                      title: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          margin: const EdgeInsets.symmetric(
-                            vertical: 4,
-                            horizontal: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.purple.shade50,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(data['text'] ?? ''),
-                        ),
-                      ),
-                    );
-                  },
+            child: ListView.builder(
+              itemCount: _messages.length,
+              itemBuilder: (context, index) {
+                return Container(
+                  alignment: Alignment.centerRight,
+                  padding: EdgeInsets.all(8.0),
+                  child: Card(
+                    color: Colors.blue[50],
+                    child: Padding(
+                      padding: EdgeInsets.all(12.0),
+                      child: Text(_messages[index], style: TextStyle(fontSize: 16)),
+                    ),
+                  ),
                 );
               },
             ),
           ),
-          Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              left: 8.0,
-              right: 8.0,
-              top: 8.0,
-            ),
+          
+          // ኪቦርድ የሚመጣበት እና መልእክት የሚጻፍበት / የሚላክበት ቦታ
+          Container(
+            padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            color: Colors.white,
             child: Row(
               children: [
                 Expanded(
                   child: TextField(
                     controller: _messageController,
-                    enabled: true,
-                    readOnly: false,
-                    keyboardType: TextInputType.text,
-                    decoration: const InputDecoration(
-                      hintText: 'መልዕክት ጽፈው ይቀበሉ...',
-                      border: OutlineInputBorder(),
+                    decoration: InputDecoration(
+                      hintText: 'መልእክት ይጻፉ...',
+                      border: InputBorder.none,
                     ),
                   ),
                 ),
-                const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(Icons.send, color: Colors.purple),
-                  onPressed: _sendMessage,
+                  icon: Icon(Icons.send, color: Colors.blueAccent),
+                  onPressed: _sendMessage, // መልእክቱን መላኪያ ትዕዛዝ
                 ),
               ],
             ),
