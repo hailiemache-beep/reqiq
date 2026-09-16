@@ -1,24 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
-  runApp(RaqiqApp());
-}
-
-class RaqiqApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'ራቂቅ (Raqiq)',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: RaqiqLoginScreen(),
-    );
-  }
-}
-
-// 1. የመጀመሪያው የስልክ ቁጥር እና ኮድ ማስገቢያ ገጽ
+// 1. መጀመሪያ የሚከፈተው እና ያስቀመጡት የመጀመሪያው የሎጊን ገጽ
 class RaqiqLoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -34,37 +17,45 @@ class RaqiqLoginScreen extends StatelessWidget {
           children: [
             Text(
               'እንኳን ወደ ራቂቅ መጡ',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 30),
             TextField(
               decoration: InputDecoration(
                 labelText: 'ስልክ ቁጥር ያስገቡ',
                 prefixIcon: Icon(Icons.phone),
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
               ),
-              keyboardType: TextInputType.phone,
             ),
-            SizedBox(height: 20),
+            SizedBox(height: 15),
             TextField(
+              obscureText: true,
               decoration: InputDecoration(
                 labelText: 'የማረጋገጫ ኮድ (Code)',
                 prefixIcon: Icon(Icons.lock),
-                border: OutlineInputBorder(),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10.0),
+                ),
               ),
-              keyboardType: TextInputType.number,
             ),
             SizedBox(height: 30),
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.blueAccent),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10.0),
+                  ),
+                ),
                 onPressed: () {
-                  // ቁልፉ ሲጫን ወደ ቻት ገጽ (Chat Screen) እንዲሄድ ይደረጋል
+                  // "ግባ" ሲባል ወደ አዲሱ የቻት ስክሪን ይወስዳል
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => RaqiqChatScreen()),
+                    MaterialPageRoute(builder: (context) => ChatScreen()),
                   );
                 },
                 child: Text('ግባ (Login)', style: TextStyle(fontSize: 18, color: Colors.white)),
@@ -77,85 +68,108 @@ class RaqiqLoginScreen extends StatelessWidget {
   }
 }
 
-// 2. የመልእክት ልውውጥ (Chat) ገጽ
-class RaqiqChatScreen extends StatefulWidget {
+// 2. ከሰው ጋር መወያያ እና ኪቦርዱን የሚያስተካክለው የቻት ስክሪን
+class ChatScreen extends StatefulWidget {
   @override
-  _RaqiqChatScreenState createState() => _RaqiqChatScreenState();
+  _ChatScreenState createState() => _ChatScreenState();
 }
 
-class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
+class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
-  final List<String> _messages = []; // መልእክቶች የሚቀመጡበት ዝርዝር
 
-  void _sendMessage() {
-    if (_messageController.text.isNotEmpty) {
-      setState(() {
-        _messages.add(_messageController.text);
-        _messageController.clear(); // ጽሁፉን ከጻፈ በኋላ ሳጥኑን ባዶ ማድረግ
-      });
-    }
+  void _sendMessage() async {
+    if (_messageController.text.trim().isEmpty) return;
+
+    await FirebaseFirestore.instance.collection('messages').add({
+      'text': _messageController.text,
+      'createdAt': Timestamp.now(),
+      'sender': 'user',
+    });
+
+    _messageController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Text('ራቂቅ ቻት'),
-            SizedBox(width: 10),
-            // ተጠቃሚው ኦንላይን መሆኑን የሚያሳይ አረንጓዴ ነጥብ (Online Status)
-            Container(
-              width: 10,
-              height: 10,
-              decoration: BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-            ),
-          ],
-        ),
+        title: Text('ራቂቅ ቻት (መወያያ)'),
         backgroundColor: Colors.blueAccent,
       ),
+      resizeToAvoidBottomInset: true, // ኪቦርዱ ሲመጣ ስክሪኑ ተጭኖ ከፍ እንዲል ያደርጋል
       body: Column(
         children: [
-          // የተላኩ እና የተጻፉ መልእክቶች የሚነበቡበት ክፍት ቦታ
+          // መልዕክቶች በቅጽበት የሚታዩበት ሊስት
           Expanded(
-            child: ListView.builder(
-              itemCount: _messages.length,
-              itemBuilder: (context, index) {
-                return Container(
-                  alignment: Alignment.centerRight,
-                  padding: EdgeInsets.all(8.0),
-                  child: Card(
-                    color: Colors.blue[50],
-                    child: Padding(
-                      padding: EdgeInsets.all(12.0),
-                      child: Text(_messages[index], style: TextStyle(fontSize: 16)),
-                    ),
-                  ),
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('messages')
+                  .orderBy('createdAt', descending: true)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return Center(child: CircularProgressIndicator());
+                }
+                var docs = snapshot.data!.docs;
+
+                return ListView.builder(
+                  reverse: true,
+                  itemCount: docs.length,
+                  itemBuilder: (context, index) {
+                    var messageData = docs[index].data() as Map<String, dynamic>;
+                    String messageText = messageData['text'] ?? '';
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Container(
+                          padding: EdgeInsets.all(12.0),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.shade50,
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                          child: Text(
+                            messageText,
+                            style: TextStyle(fontSize: 16.0, color: Colors.black87),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
           ),
-          
-          // ኪቦርድ የሚመጣበት እና መልእክት የሚጻፍበት / የሚላክበት ቦታ
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
-            color: Colors.white,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    decoration: InputDecoration(
-                      hintText: 'መልእክት ይጻፉ...',
-                      border: InputBorder.none,
+
+          // ኪቦርዱ ሲመጣ አብሮ ከፍ የሚለው የጽሁፍ ማስገቢያ ሳጥን
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _messageController,
+                      decoration: InputDecoration(
+                        hintText: 'መልዕክት ይጻፉ...',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(20.0),
+                        ),
+                        contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                      ),
                     ),
                   ),
-                ),
-                IconButton(
-                  icon: Icon(Icons.send, color: Colors.blueAccent),
-                  onPressed: _sendMessage, // መልእክቱን መላኪያ ትዕዛዝ
-                ),
-              ],
+                  SizedBox(width: 8.0),
+                  CircleAvatar(
+                    backgroundColor: Colors.blue,
+                    child: IconButton(
+                      icon: Icon(Icons.send, color: Colors.white),
+                      onPressed: _sendMessage,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ],
