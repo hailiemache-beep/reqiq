@@ -1,7 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// 1. መጀመሪያ የሚከፈተው እና ያስቀመጡት የመጀመሪያው የሎጊን ገጽ
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+  runApp(MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'ራቂቅ (Raqiq)',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: RaqiqLoginScreen(),
+    );
+  }
+}
+
+// 1. የመጀመሪያው የስልክ ቁጥር እና ኮድ ማሰገቢያ ገጽ (በስክሪን ሾትዎ ላይ የነበረው)
 class RaqiqLoginScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -52,7 +73,7 @@ class RaqiqLoginScreen extends StatelessWidget {
                   ),
                 ),
                 onPressed: () {
-                  // "ግባ" ሲባል ወደ አዲሱ የቻት ስክሪን ይወስዳል
+                  // "ግባ" ሲባል ወደ ቻት ስክሪን ይወስዳል
                   Navigator.push(
                     context,
                     MaterialPageRoute(builder: (context) => ChatScreen()),
@@ -68,7 +89,7 @@ class RaqiqLoginScreen extends StatelessWidget {
   }
 }
 
-// 2. ከሰው ጋር መወያያ እና ኪቦርዱን የሚያስተካክለው የቻት ስክሪን
+// 2. ከሰው ጋር መወያያ እና ኪቦርዱን በአግባቡ የሚያስተካክለው የቻት ስክሪን
 class ChatScreen extends StatefulWidget {
   @override
   _ChatScreenState createState() => _ChatScreenState();
@@ -96,7 +117,7 @@ class _ChatScreenState extends State<ChatScreen> {
         title: Text('ራቂቅ ቻት (መወያያ)'),
         backgroundColor: Colors.blueAccent,
       ),
-      resizeToAvoidBottomInset: true, // ኪቦርዱ ሲመጣ ስክሪኑ ተጭኖ ከፍ እንዲል ያደርጋል
+      resizeToAvoidBottomInset: true, // ኪቦርዱ ሲመጣ ስክሪኑን እንዳይጨፈልቀው ይከላከላል
       body: Column(
         children: [
           // መልዕክቶች በቅጽበት የሚታዩበት ሊስት
