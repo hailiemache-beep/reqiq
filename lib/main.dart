@@ -2,85 +2,110 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// ዋናው መነሻ (Main function) ፋየርቤዝን አስጀምሮ አፑን ያስነሳዋል
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  runApp(MyApp());
+  
+  // ፋየርቤዝ በትክክል እንዲነሳ መደረጉን ማረጋገጫ
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase initialization error: $e');
+  }
+
+  runApp(const RaqiqApp());
 }
 
-class MyApp extends StatelessWidget {
+class RaqiqApp extends StatelessWidget {
+  const RaqiqApp({Key? key}) : super(key: key);
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'ራቂቅ (Raqiq)',
+      title: 'ራቂቅ ቻት አፕ',
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: RaqiqLoginScreen(),
+      home: const RaqiqLoginScreen(),
     );
   }
 }
 
-// 1. የመጀመሪያው የስልክ ቁጥር እና ኮድ ማሰገቢያ ገጽ (በስክሪን ሾትዎ ላይ የነበረው)
-class RaqiqLoginScreen extends StatelessWidget {
+// ==========================================================
+// 1. የሎጊን (Login) ስክሪን ክፍል
+// ==========================================================
+class RaqiqLoginScreen extends StatefulWidget {
+  const RaqiqLoginScreen({Key? key}) : super(key: key);
+
+  @override
+  State<RaqiqLoginScreen> createState() => _RaqiqLoginScreenState();
+}
+
+class _RaqiqLoginScreenState extends State<RaqiqLoginScreen> {
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _roomCodeController = TextEditingController();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ራቂቅ - ግባ (Login)'),
+        title: const Text('ራቂቅ - መግቢያ (Login)'),
         backgroundColor: Colors.blueAccent,
       ),
       body: Padding(
-        padding: EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(
+            const Text(
               'እንኳን ወደ ራቂቅ መጡ',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.blueAccent),
             ),
-            SizedBox(height: 30),
+            const SizedBox(height: 20),
             TextField(
-              decoration: InputDecoration(
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
                 labelText: 'ስልክ ቁጥር ያስገቡ',
+                border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.phone),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
               ),
             ),
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
             TextField(
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: 'የማረጋገጫ ኮድ (Code)',
+              controller: _roomCodeController,
+              decoration: const InputDecoration(
+                labelText: 'የመጋገሪያ ኮድ (Room Code)',
+                border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.lock),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10.0),
-                ),
               ),
             ),
-            SizedBox(height: 30),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10.0),
-                  ),
-                ),
-                onPressed: () {
-                  // "ግባ" ሲባል ወደ ቻት ስክሪን ይወስዳል
+            const SizedBox(height: 20),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                minimumSize: const Size.fromHeight(50),
+              ),
+              onPressed: () {
+                String phone = _phoneController.text.trim();
+                String roomCode = _roomCodeController.text.trim();
+
+                if (phone.isNotEmpty && roomCode.isNotEmpty) {
+                  // ወደ ቻት ስክሪን ማለፍ
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => ChatScreen()),
+                    MaterialPageRoute(
+                      builder: (context) => RaqiqChatScreen(roomCode: roomCode, userPhone: phone),
+                    ),
                   );
-                },
-                child: Text('ግባ (Login)', style: TextStyle(fontSize: 18, color: Colors.white)),
-              ),
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('እባክዎ ስልክ እና ኮድ በትክክል ያስገቡ!')),
+                  );
+                }
+              },
+              child: const Text('ግባ (Login)', style: TextStyle(fontSize: 18, color: Colors.white)),
             ),
           ],
         ),
@@ -89,71 +114,99 @@ class RaqiqLoginScreen extends StatelessWidget {
   }
 }
 
-// 2. ከሰው ጋር መወያያ እና ኪቦርዱን በአግባቡ የሚያስተካክለው የቻት ስክሪን
-class ChatScreen extends StatefulWidget {
+// ==========================================================
+// 2. የቻት (Chat) ስክሪን ክፍል (ኪቦርድ እና መልእክት መለዋወጫ)
+// ==========================================================
+class RaqiqChatScreen extends StatefulWidget {
+  final String roomCode;
+  final String userPhone;
+
+  const RaqiqChatScreen({Key? key, required this.roomCode, required this.userPhone}) : super(key: key);
+
   @override
-  _ChatScreenState createState() => _ChatScreenState();
+  State<RaqiqChatScreen> createState() => _RaqiqChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
   final TextEditingController _messageController = TextEditingController();
 
+  // መልእክት ወደ ፋየርቤዝ በራሱ ጊዜ የሚልክ פונክشن
   void _sendMessage() async {
-    if (_messageController.text.trim().isEmpty) return;
+    if (_messageController.text.trim().isNotEmpty) {
+      String messageText = _messageController.text.trim();
+      _messageController.clear();
 
-    await FirebaseFirestore.instance.collection('messages').add({
-      'text': _messageController.text,
-      'createdAt': Timestamp.now(),
-      'sender': 'user',
-    });
-
-    _messageController.clear();
+      await FirebaseFirestore.instance
+          .collection('chatRooms')
+          .doc(widget.roomCode)
+          .collection('messages')
+          .add({
+        'text': messageText,
+        'sender': widget.userPhone,
+        'createdAt': Timestamp.now(),
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ራቂቅ ቻት (መወያያ)'),
+        title: Text('ራቂቅ ቻት (ኮድ: ${widget.roomCode})'),
         backgroundColor: Colors.blueAccent,
       ),
-      resizeToAvoidBottomInset: true, // ኪቦርዱ ሲመጣ ስክሪኑን እንዳይጨፈልቀው ይከላከላል
       body: Column(
         children: [
-          // መልዕክቶች በቅጽበት የሚታዩበት ሊስት
+          // መልእክቶች የሚታዩበት የውይይት ዝርዝር ክፍል
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
+                  .collection('chatRooms')
+                  .doc(widget.roomCode)
                   .collection('messages')
                   .orderBy('createdAt', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return Center(child: CircularProgressIndicator());
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
                 }
-                var docs = snapshot.data!.docs;
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const Center(
+                    child: Text('እስካሁን ምንም መልእክት የለም! የመጀመሪያውን መልእክት ይላኩ።'),
+                  );
+                }
+
+                final docs = snapshot.data!.docs;
 
                 return ListView.builder(
-                  reverse: true,
+                  reverse: true, // አዳዲስ መልእክቶች ከታች እንዲደረደሩ
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
-                    var messageData = docs[index].data() as Map<String, dynamic>;
-                    String messageText = messageData['text'] ?? '';
+                    var data = docs[index].data() as Map<String, dynamic>;
+                    bool isMe = data['sender'] == widget.userPhone;
 
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10.0, vertical: 4.0),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Container(
-                          padding: EdgeInsets.all(12.0),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.shade50,
-                            borderRadius: BorderRadius.circular(12.0),
-                          ),
-                          child: Text(
-                            messageText,
-                            style: TextStyle(fontSize: 16.0, color: Colors.black87),
-                          ),
+                    return Align(
+                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: isMe ? Colors.blue[100] : Colors.grey[300],
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              data['sender'] ?? '',
+                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              data['text'] ?? '',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -163,31 +216,31 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
 
-          // ኪቦርዱ ሲመጣ አብሮ ከፍ የሚለው የጽሁፍ ማስገቢያ ሳጥን
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 10.0),
+          // ኪቦርድ ሲመጣ አብሮ የሚስተካከል እና መልእክት መጻፊያ የያዘው ክፍል
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: MediaQuery.of(context).viewInsets.bottom,
+              left: 8.0,
+              right: 8.0,
+              top: 8.0,
+            ),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              color: Colors.white,
               child: Row(
                 children: [
                   Expanded(
                     child: TextField(
                       controller: _messageController,
-                      decoration: InputDecoration(
-                        hintText: 'መልዕክት ይጻፉ...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(20.0),
-                        ),
-                        contentPadding: EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
+                      decoration: const InputDecoration(
+                        hintText: 'መልእክት ይጻፉ...',
+                        border: InputBorder.none,
                       ),
                     ),
                   ),
-                  SizedBox(width: 8.0),
-                  CircleAvatar(
-                    backgroundColor: Colors.blue,
-                    child: IconButton(
-                      icon: Icon(Icons.send, color: Colors.white),
-                      onPressed: _sendMessage,
-                    ),
+                  IconButton(
+                    icon: const Icon(Icons.send, color: Colors.blueAccent),
+                    onPressed: _sendMessage,
                   ),
                 ],
               ),
