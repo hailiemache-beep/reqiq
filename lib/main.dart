@@ -4,13 +4,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
   try {
     await Firebase.initializeApp();
   } catch (e) {
     debugPrint('Firebase initialization error: $e');
   }
-
   runApp(const RaqiqApp());
 }
 
@@ -22,17 +20,13 @@ class RaqiqApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'ራቂቅ ቻት አፕ',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: const RaqiqLoginScreen(),
     );
   }
 }
 
-// ==========================================================
 // 1. መግቢያ (Login) ስክሪን
-// ==========================================================
 class RaqiqLoginScreen extends StatefulWidget {
   const RaqiqLoginScreen({Key? key}) : super(key: key);
 
@@ -114,9 +108,7 @@ class _RaqiqLoginScreenState extends State<RaqiqLoginScreen> {
   }
 }
 
-// ==========================================================
-// 2. የቻት (Chat) ስክሪን - እንደ ቴሌግራም በቴክስት መጻጻፊያ
-// ==========================================================
+// 2. የቻት (Chat) ስክሪን
 class RaqiqChatScreen extends StatefulWidget {
   final String roomCode;
   final String userPhone;
@@ -134,7 +126,6 @@ class RaqiqChatScreen extends StatefulWidget {
 class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
   final TextEditingController _messageController = TextEditingController();
 
-  // ቴክስት መልእክት ወደ ፋየርቤዝ የሚልክበት ፖይንት
   void _sendMessage() async {
     if (_messageController.text.trim().isNotEmpty) {
       String messageText = _messageController.text.trim();
@@ -165,7 +156,6 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
       ),
       body: Column(
         children: [
-          // መልእክቶች እንደ ቴሌግራም ዝርዝር ሆኖ የሚታዩበት ክፍል
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -175,19 +165,24 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
                   .orderBy('createdAt', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
+                // ዳታ እስኪመጣ ድረስ ባዶ ግራጫ ስክሪን ሳይሆን ሎዲንግ እንዲያሳይ ተደርጓል
+                if (snapshot.hasError) {
+                  return Center(child: Text('ስህተት ተፈጥሯል: ${snapshot.error}'));
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
-                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
+                
+                final docs = snapshot.data?.docs ?? [];
+
+                if (docs.isEmpty) {
+                  const Center(
                     child: Text('እስካሁን ምንም መልእክት የለም። የመጀመሪያውን ቴክስት ይላኩ!'),
                   );
                 }
 
-                final docs = snapshot.data!.docs;
-
                 return ListView.builder(
-                  reverse: true, // አዳዲስ መልእክቶች ከታች እንዲደረደሩ
+                  reverse: true,
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     var data = docs[index].data() as Map<String, dynamic>;
@@ -199,7 +194,6 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
                         margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
                         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
                         decoration: BoxDecoration(
-                          // እኛ የላክነው ሰማያዊ፣ ሌላው ሰው የላከው ግራጫ እንዲሆን
                           color: isMe ? Colors.blue[600] : Colors.grey[300],
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -231,8 +225,7 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
               },
             ),
           ),
-
-          // ከታች ያለው የቴክስት መጻፊያ ሳጥን እና የላክ (Send) አዝራር (እንደ ቴሌግራም)
+          // የቴክስት መጻፊያ ሳጥን እና የላክ አዝራር
           Container(
             padding: const EdgeInsets.all(8.0),
             color: Colors.white,
