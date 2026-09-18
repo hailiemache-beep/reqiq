@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // ፋየርቤዝ በትክክል እንዲነሳ ማድረግ
   try {
     await Firebase.initializeApp();
   } catch (e) {
@@ -32,7 +31,7 @@ class RaqiqApp extends StatelessWidget {
 }
 
 // ==========================================================
-// 1. የሎጊን (Login) ስክሪን ክፍል
+// 1. የሎጊን (Login) ስክሪን
 // ==========================================================
 class RaqiqLoginScreen extends StatefulWidget {
   const RaqiqLoginScreen({Key? key}) : super(key: key);
@@ -91,8 +90,8 @@ class _RaqiqLoginScreenState extends State<RaqiqLoginScreen> {
                 String roomCode = _roomCodeController.text.trim();
 
                 if (phone.isNotEmpty && roomCode.isNotEmpty) {
-                  // ወደ ቻት ስክሪን መረጃዎችን ይዞ ማለፍ
-                  Navigator.push(
+                  // ወደ ቻት ስክሪን በግልጽ እንዲሻገር ማድረግ
+                  Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
                       builder: (context) => RaqiqChatScreen(
@@ -117,7 +116,7 @@ class _RaqiqLoginScreenState extends State<RaqiqLoginScreen> {
 }
 
 // ==========================================================
-// 2. የቻት (Chat) ስክሪን ክፍል
+// 2. የቻት (Chat) ስክሪን - መልእክት የሚጻጻፉበት ዋናው ክፍል
 // ==========================================================
 class RaqiqChatScreen extends StatefulWidget {
   final String roomCode;
@@ -136,7 +135,7 @@ class RaqiqChatScreen extends StatefulWidget {
 class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
   final TextEditingController _messageController = TextEditingController();
 
-  // መልእክት ወደ ፋየርቤዝ የሚልክበት פונקشن
+  // መልእክት ወደ ፋየርቤዝ (Firestore) በመላክ ላይ
   void _sendMessage() async {
     if (_messageController.text.trim().isNotEmpty) {
       String messageText = _messageController.text.trim();
@@ -162,12 +161,12 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('ራቂቅ ቻት (ኮድ: ${widget.roomCode})'),
+        title: Text('ራቂቅ ቻት (ክፍል: ${widget.roomCode})'),
         backgroundColor: Colors.blueAccent,
       ),
       body: Column(
         children: [
-          // መልእክቶች የሚታዩበት ክፍል
+          // 1. የተላኩ መልእክቶች ዝርዝር የሚታይበት ቦታ
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -182,14 +181,14 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(
-                    child: Text('እስካሁን ምንም መልእክት የለም። የመጀመሪያውን መልእክት ይላኩ!'),
+                    child: Text('እስካሁን ምንም መልእክት የለም። ከታች በመጻፍ የመጀመሪያውን ይላኩ!'),
                   );
                 }
 
                 final docs = snapshot.data!.docs;
 
                 return ListView.builder(
-                  reverse: true, // አዳዲስ መልእክቶች ከታች እንዲደረደሩ
+                  reverse: true,
                   itemCount: docs.length,
                   itemBuilder: (context, index) {
                     var data = docs[index].data() as Map<String, dynamic>;
@@ -230,34 +229,27 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
             ),
           ),
 
-          // ኪቦርዱ ስክሪኑን እንዳይደብቀው እና መጻፊያው ከታች እንዲሆን የተደረገበት ክፍል
-          Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              left: 8.0,
-              right: 8.0,
-              top: 8.0,
-            ),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8.0),
-              color: Colors.white,
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _messageController,
-                      decoration: const InputDecoration(
-                        hintText: 'መልእክት ይጻፉ...',
-                        border: InputBorder.none,
-                      ),
+          // 2. ኪቦርድ የሚከፍት እና መልእክት መጻፊያ ሳጥን ከላክ (Send) አዝራር ጋር
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 6.0),
+            color: Colors.grey[200],
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: const InputDecoration(
+                      hintText: 'መልእክት እዚህ ይጻፉ...',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: Colors.blueAccent),
-                    onPressed: _sendMessage,
-                  ),
-                ],
-              ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Colors.blueAccent),
+                  onPressed: _sendMessage,
+                ),
+              ],
             ),
           ),
         ],
