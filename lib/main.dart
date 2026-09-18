@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// ዋናው መነሻ (Main function) ፋየርቤዝን አስጀምሮ አፑን ያስነሳዋል
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // ፋየርቤዝ በትክክል እንዲነሳ መደረጉን ማረጋገጫ
+  // ፋየርቤዝ በትክክል እንዲነሳ ማድረግ
   try {
     await Firebase.initializeApp();
   } catch (e) {
@@ -92,11 +91,14 @@ class _RaqiqLoginScreenState extends State<RaqiqLoginScreen> {
                 String roomCode = _roomCodeController.text.trim();
 
                 if (phone.isNotEmpty && roomCode.isNotEmpty) {
-                  // ወደ ቻት ስክሪን ማለፍ
+                  // ወደ ቻት ስክሪን መረጃዎችን ይዞ ማለፍ
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => RaqiqChatScreen(roomCode: roomCode, userPhone: phone),
+                      builder: (context) => RaqiqChatScreen(
+                        roomCode: roomCode,
+                        userPhone: phone,
+                      ),
                     ),
                   );
                 } else {
@@ -115,13 +117,17 @@ class _RaqiqLoginScreenState extends State<RaqiqLoginScreen> {
 }
 
 // ==========================================================
-// 2. የቻት (Chat) ስክሪን ክፍል (ኪቦርድ እና መልእክት መለዋወጫ)
+// 2. የቻት (Chat) ስክሪን ክፍል
 // ==========================================================
 class RaqiqChatScreen extends StatefulWidget {
   final String roomCode;
   final String userPhone;
 
-  const RaqiqChatScreen({Key? key, required this.roomCode, required this.userPhone}) : super(key: key);
+  const RaqiqChatScreen({
+    Key? key,
+    required this.roomCode,
+    required this.userPhone,
+  }) : super(key: key);
 
   @override
   State<RaqiqChatScreen> createState() => _RaqiqChatScreenState();
@@ -130,21 +136,25 @@ class RaqiqChatScreen extends StatefulWidget {
 class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
   final TextEditingController _messageController = TextEditingController();
 
-  // መልእክት ወደ ፋየርቤዝ በራሱ ጊዜ የሚልክ פונክشن
+  // መልእክት ወደ ፋየርቤዝ የሚልክበት פונקشن
   void _sendMessage() async {
     if (_messageController.text.trim().isNotEmpty) {
       String messageText = _messageController.text.trim();
       _messageController.clear();
 
-      await FirebaseFirestore.instance
-          .collection('chatRooms')
-          .doc(widget.roomCode)
-          .collection('messages')
-          .add({
-        'text': messageText,
-        'sender': widget.userPhone,
-        'createdAt': Timestamp.now(),
-      });
+      try {
+        await FirebaseFirestore.instance
+            .collection('chatRooms')
+            .doc(widget.roomCode)
+            .collection('messages')
+            .add({
+          'text': messageText,
+          'sender': widget.userPhone,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      } catch (e) {
+        debugPrint('Error sending message: $e');
+      }
     }
   }
 
@@ -157,7 +167,7 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
       ),
       body: Column(
         children: [
-          // መልእክቶች የሚታዩበት የውይይት ዝርዝር ክፍል
+          // መልእክቶች የሚታዩበት ክፍል
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -172,7 +182,7 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                   return const Center(
-                    child: Text('እስካሁን ምንም መልእክት የለም! የመጀመሪያውን መልእክት ይላኩ።'),
+                    child: Text('እስካሁን ምንም መልእክት የለም። የመጀመሪያውን መልእክት ይላኩ!'),
                   );
                 }
 
@@ -199,7 +209,11 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
                           children: [
                             Text(
                               data['sender'] ?? '',
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.black54),
+                              style: const TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black54,
+                              ),
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -216,7 +230,7 @@ class _RaqiqChatScreenState extends State<RaqiqChatScreen> {
             ),
           ),
 
-          // ኪቦርድ ሲመጣ አብሮ የሚስተካከል እና መልእክት መጻፊያ የያዘው ክፍል
+          // ኪቦርዱ ስክሪኑን እንዳይደብቀው እና መጻፊያው ከታች እንዲሆን የተደረገበት ክፍል
           Padding(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(context).viewInsets.bottom,
